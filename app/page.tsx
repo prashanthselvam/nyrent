@@ -14,7 +14,7 @@ const NEIGHBORHOODS_QUERY: DeeplyReadonly<Query> = {
   }
 }
 
-const getRentQuery: (beds: string, baths: string, neighborhood: string) => DeeplyReadonly<Query> = (beds, baths, neighborhood) => {
+function getRentQuery(beds: string, baths: string, neighborhood: string): DeeplyReadonly<Query> {
   return {
     "measures": [
       "rent_history.median_rent",
@@ -45,6 +45,27 @@ const getRentQuery: (beds: string, baths: string, neighborhood: string) => Deepl
       }
     ]
   }
+}
+
+function formatCurrency(input: string): string {
+  // Convert the input string to a number
+  const numValue = parseFloat(input);
+
+  // Check if the conversion was successful
+  if (isNaN(numValue)) {
+    // throw new Error('Invalid input: not a valid number');
+    return ""
+  }
+
+  // Format the number as currency
+  const formattedCurrency = numValue.toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+
+  return formattedCurrency;
 }
 
 const Home = () => {
@@ -119,16 +140,16 @@ const Home = () => {
               <p className="text-lg font-semibold">
                 Median rent for a {beds} bed, {baths} bath in {location}
               </p>
-              <p className="mt-2 text-2xl font-bold">{rawRentData["rent_history.median_rent"]}</p>
+              <p className="mt-2 text-2xl font-bold">{formatCurrency(rawRentData["rent_history.median_rent"])}</p>
             </div>
             <div>
               <p className="text-lg font-semibold">
                 Most people are paying between
               </p>
               <div className="mt-2">
-                <span className="mt-2 text-2xl font-bold">{rawRentData["rent_history.p25_rent"]}</span>
+                <span className="mt-2 text-2xl font-bold">{formatCurrency(rawRentData["rent_history.p25_rent"])}</span>
                 {' '}and{' '}
-                <span className="mt-2 text-2xl font-bold">{rawRentData["rent_history.p75_rent"]}</span>
+                <span className="mt-2 text-2xl font-bold">{formatCurrency(rawRentData["rent_history.median_rent"])}</span>
               </div>
             </div>
             <div
