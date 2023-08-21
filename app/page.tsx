@@ -1,6 +1,51 @@
 "use client"
 
 import React, { useState } from 'react';
+import { useCubeQuery } from '@cubejs-client/react';
+import MyCubeProvider from './cube';
+import { DeeplyReadonly, Query } from '@cubejs-client/core';
+
+const NEIGHBORHOODS_QUERY: DeeplyReadonly<Query> = {
+  "dimensions": [
+    "buildings.neighborhood",
+  ],
+  "order": {
+    "buildings.neighborhood": "asc"
+  }
+}
+
+const getRentQuery: (beds: string, baths: string, neighborhood: string) => DeeplyReadonly<Query> = (beds, baths, neighborhood) => {
+  return {
+    "measures": [
+      "rent_history.median_rent",
+      "rent_history.p25_rent",
+      "rent_history.p75_rent"
+    ],
+    "filters": [
+      {
+        "member": "buildings.neighborhood",
+        "operator": "equals",
+        "values": [
+          neighborhood
+        ]
+      },
+      {
+        "member": "rent_history.beds",
+        "operator": "equals",
+        "values": [
+          beds
+        ]
+      },
+      {
+        "member": "rent_history.baths",
+        "operator": "equals",
+        "values": [
+          baths
+        ]
+      }
+    ]
+  }
+}
 
 const Home = () => {
   const [beds, setBeds] = useState('');
@@ -12,8 +57,15 @@ const Home = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     setShowResults(true);
-    // You can perform any necessary calculations or API calls here
   };
+
+  const { resultSet: neighborhoodsResultSet } = useCubeQuery(NEIGHBORHOODS_QUERY);
+  const neighborhoodOptions = neighborhoodsResultSet?.rawData()?.map((row) => row["buildings.neighborhood"]) ?? []
+
+  const { resultSet: rentResultSet, isLoading, error, progress } = useCubeQuery(getRentQuery(beds, baths, location));
+  const rawRentData = rentResultSet?.rawData()?.[0] ?? {}
+
+  console.log(rawRentData["rent_history.median_rent"])
 
   return (
     <div className="flex flex-col items-center h-screen w-full px-12 pt-8">
@@ -42,14 +94,16 @@ const Home = () => {
               onChange={(e) => setBaths(e.target.value)}
             />
             bath in
-            <input
-              type="text"
+            <select
               style={{ lineHeight: "initial " }}
-              className="w-32 mx-2 text-center border-b-2 border-gray-400 focus:border-blue-500 focus:outline-none"
+              className="mx-2 text-center border-b-2 border-gray-400 focus:border-blue-500 focus:outline-none"
               placeholder="_______"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-            />
+            >
+              {neighborhoodOptions.map((option) => <option value={option}>{option}</option>)}
+            </select>
+
             ?
           </h1>
           <button
@@ -65,23 +119,23 @@ const Home = () => {
               <p className="text-lg font-semibold">
                 Median rent for a {beds} bed, {baths} bath in {location}
               </p>
-              <p className="mt-2 text-2xl font-bold">$4,500</p>
+              <p className="mt-2 text-2xl font-bold">{rawRentData["rent_history.median_rent"]}</p>
             </div>
             <div>
               <p className="text-lg font-semibold">
                 Most people are paying between
               </p>
               <div className="mt-2">
-                <span className="mt-2 text-2xl font-bold">$3,500</span>
+                <span className="mt-2 text-2xl font-bold">{rawRentData["rent_history.p25_rent"]}</span>
                 {' '}and{' '}
-                <span className="mt-2 text-2xl font-bold">$5,500</span>
+                <span className="mt-2 text-2xl font-bold">{rawRentData["rent_history.p75_rent"]}</span>
               </div>
             </div>
             <div
               className="cursor-pointer mt-4 text-blue-500 font-semibold"
               onClick={() => setExpanded(!expanded)}
             >
-              {expanded ? 'See Less...' : 'See More..'}
+              {expanded ? 'See Less...' : 'See More...'}
             </div>
             {/* Expanded content */}
             {expanded && (
@@ -96,4 +150,8 @@ const Home = () => {
   );
 };
 
-export default Home;
+const WrappedHome = () => {
+  return <MyCubeProvider><Home /></MyCubeProvider>
+}
+
+export default WrappedHome;
